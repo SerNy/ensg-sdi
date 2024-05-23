@@ -1,0 +1,51 @@
+version: '3.7'
+
+services:
+  portainer:
+    image: portainer/portainer-ce:alpine
+    container_name: portainer
+    command: -H unix:///var/run/docker.sock
+    ports:
+      - "9000:9000"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "portainer_data:/data"
+    restart: always
+    networks:
+      - revproxy-apps
+
+  postgis:
+    container_name: ensg-sdi-postgis
+    image: postgis/postgis:${POSTGIS_VERSION_TAG:-16-3.4}
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    ports:
+      - 127.0.0.1:${POSTGIS_PORT_EXTERNAL:-8001}:5432
+    environment:
+      - "PGUSER=serge"
+      - "POSTGRES_USER=serge"
+      - "POSTGRES_DB=postgres"
+      - "POSTGRES_PASSWORD=postgres"
+    shm_size: 256MB
+    networks:
+      - revproxy-apps
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - 3000:3000
+    volumes:
+      - ./homepage:/app/config # Make sure your local config directory exists
+      - /var/run/docker.sock:/var/run/docker.sock # (optional) For docker integrations
+    networks:
+      - revproxy-apps
+
+volumes:
+  portainer_data:
+  postgis_data:
+
+networks:
+  revproxy-apps:
+    name: revproxy-apps
+    external: true
